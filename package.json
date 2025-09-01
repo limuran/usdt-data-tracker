@@ -1,0 +1,16 @@
+{
+  "name": "usdt-data-tracker",
+  "version": "1.0.0",
+  "description": "多合约数据监听子图",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --studio usdt-data-tracker",
+    "create-local": "graph create --node http://127.0.0.1:8020/ usdt-data-tracker",
+    "deploy-local": "graph deploy --node http://127.0.0.1:8020/ --ipfs http://127.0.0.1:5001 usdt-data-tracker"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "^0.97.1",
+    "@graphprotocol/graph-ts": "^0.38.1"
+  }
+}

@@ -1,0 +1,26 @@
+specVersion: 0.0.5
+schema:
+  file: schema.graphql
+dataSources:
+  - kind: ethereum
+    name: USDTContract
+    network: sepolia
+    source:
+      address: "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0"
+      abi: ERC20
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Transfer
+        - Token
+        - User
+      abis:
+        - name: ERC20
+          file: USDTContract/ERC20.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: USDTContract/USDTContract.wasm
