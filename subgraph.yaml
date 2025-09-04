@@ -28,4 +28,7 @@ dataSources:
           handler: handleDataStored
         - event: ContractDeployed(indexed address,uint256,uint256)
           handler: handleContractDeployed
+      callHandlers:
+        - function: storeData(string,string)
+          handler: handleStoreDataCall
       file: ./src/mapping.ts
