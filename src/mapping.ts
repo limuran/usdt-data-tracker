@@ -38,6 +38,7 @@ export function handleDataStored(event: DataStored): void {
     contractStats.totalUsers = BigInt.fromI32(0)
     contractStats.deploymentBlock = event.block.number
     contractStats.deploymentTime = event.block.timestamp
+    contractStats.deployer = Bytes.empty() // 初始化为空，在ContractDeployed中设置
   }
   
   contractStats.totalEntries = contractStats.totalEntries.plus(BigInt.fromI32(1))
@@ -50,26 +51,39 @@ export function handleDataStored(event: DataStored): void {
   contractStats.save()
   
   // 更新每日统计
-  let dayId = (event.block.timestamp.toI32() / 86400).toString() // 天数
+  let dayTimestamp = event.block.timestamp.toI32() / 86400 * 86400 // 标准化到当天开始
+  let dayId = dayTimestamp.toString()
   let dailyStats = DailyStats.load(dayId)
   
   if (!dailyStats) {
     dailyStats = new DailyStats(dayId)
-    dailyStats.date = dayId
+    // 将时间戳转换为 YYYY-MM-DD 格式
+    let date = new Date(dayTimestamp * 1000)
+    dailyStats.date = date.toISOString().split('T')[0]
     dailyStats.entriesCount = BigInt.fromI32(0)
     dailyStats.activeUsers = BigInt.fromI32(0)
     dailyStats.newUsers = BigInt.fromI32(0)
   }
   
   dailyStats.entriesCount = dailyStats.entriesCount.plus(BigInt.fromI32(1))
+  
+  // 检查是否是当天的新用户
+  if (user.totalEntries.equals(BigInt.fromI32(1))) {
+    dailyStats.newUsers = dailyStats.newUsers.plus(BigInt.fromI32(1))
+  }
+  
   dailyStats.save()
 }
 
 export function handleContractDeployed(event: ContractDeployed): void {
-  let contractStats = new DataStorageContract(event.address.toHexString())
+  let contractStats = DataStorageContract.load(event.address.toHexString())
   
-  contractStats.totalEntries = BigInt.fromI32(0)
-  contractStats.totalUsers = BigInt.fromI32(0)
+  if (!contractStats) {
+    contractStats = new DataStorageContract(event.address.toHexString())
+    contractStats.totalEntries = BigInt.fromI32(0)
+    contractStats.totalUsers = BigInt.fromI32(0)
+  }
+  
   contractStats.deploymentBlock = event.params.blockNumber
   contractStats.deploymentTime = event.params.timestamp
   contractStats.deployer = event.params.deployer
