@@ -1,26 +1,31 @@
 specVersion: 0.0.5
+description: USDT Data Tracker - Blockchain Data System
+repository: https://github.com/limuran/usdt-data-tracker
 schema:
   file: schema.graphql
 dataSources:
   - kind: ethereum
-    name: USDTContract
+    name: DataStorage
     network: sepolia
     source:
-      address: "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0"
-      abi: ERC20
-      startBlock: 0
+      address: "0xcD6a42782d230D7c13A74ddec5dD140e55499Df9"
+      startBlock: 13
+      abi: DataStorage
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - Transfer
-        - Token
+        - DataEntry
         - User
+        - DataStorageContract
+        - DailyStats
       abis:
-        - name: ERC20
-          file: USDTContract/ERC20.json
+        - name: DataStorage
+          file: DataStorage/DataStorage.json
       eventHandlers:
-        - event: Transfer(indexed address,indexed address,uint256)
-          handler: handleTransfer
-      file: USDTContract/USDTContract.wasm
+        - event: DataStored(indexed address,string,uint256,string,indexed uint256,uint256,bytes32)
+          handler: handleDataStored
+        - event: ContractDeployed(indexed address,uint256,uint256)
+          handler: handleContractDeployed
+      file: DataStorage/DataStorage.wasm
