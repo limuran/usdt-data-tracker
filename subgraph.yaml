@@ -1,4 +1,6 @@
 specVersion: 0.0.5
+description: USDT Data Tracker - Blockchain Data System
+repository: https://github.com/limuran/usdt-data-tracker
 schema:
   file: ./schema.graphql
 dataSources:
@@ -14,9 +16,10 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - DataStored
         - DataEntry
         - User
+        - DataStorageContract
+        - DailyStats
       abis:
         - name: DataStorage
           file: ./abis/DataStorage.json
