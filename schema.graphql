@@ -1,84 +1,36 @@
-# 代币信息
-type Token @entity(immutable: false) {
-  id: ID! # 合约地址
-  name: String!
-  symbol: String!
-  decimals: Int!
-  totalSupply: BigInt!
-
-  # 统计数据
-  transferCount: BigInt!
-  totalVolume: BigInt!
-  holderCount: BigInt!
-
-  # 关联数据
-  transfers: [Transfer!]! @derivedFrom(field: "token")
-  holders: [User!]! @derivedFrom(field: "tokens")
-}
-
-# 转账记录
-type Transfer @entity(immutable: true) {
-  id: ID! # txHash + logIndex
-  token: Token!
-  from: User!
-  to: User!
-  value: BigInt!
-
-  # 区块信息
-  blockNumber: BigInt!
-  blockHash: Bytes!
+type DataEntry @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  user: Bytes!
+  data: String!
+  dataType: String!
   timestamp: BigInt!
+  blockNumber: BigInt!
+  dataHash: Bytes!
+  entryId: BigInt!
   transactionHash: Bytes!
-
-  # 分析字段
-  valueUSD: BigDecimal
-  isLargeTransfer: Boolean!
 }
 
-# 用户信息
 type User @entity(immutable: false) {
-  id: ID! # 地址
-  # 关联的代币
-  tokens: [Token!]!
-
-  # 转账记录
-  sentTransfers: [Transfer!]! @derivedFrom(field: "from")
-  receivedTransfers: [Transfer!]! @derivedFrom(field: "to")
-
-  # 统计数据
-  totalSent: BigInt!
-  totalReceived: BigInt!
-  transactionCount: BigInt!
-  firstTransactionTime: BigInt
-  lastTransactionTime: BigInt
-
-  # 用户标签
-  isWhale: Boolean!
-  isContract: Boolean!
+  id: ID! # user address
+  dataEntries: [DataEntry!]! @derivedFrom(field: "user")
+  totalEntries: BigInt!
+  firstEntryTime: BigInt
+  lastEntryTime: BigInt
 }
 
-# 每日统计
-type DailyStats @entity(immutable: true) {
-  id: ID! # YYYY-MM-DD-合约地址
+type DataStorageContract @entity(immutable: false) {
+  id: ID! # contract address
+  totalEntries: BigInt!
+  totalUsers: BigInt!
+  deploymentBlock: BigInt!
+  deploymentTime: BigInt!
+  deployer: Bytes!
+}
+
+type DailyStats @entity(immutable: false) {
+  id: ID! # YYYY-MM-DD
   date: String!
-  token: Token!
-
-  # 交易统计
-  transferCount: BigInt!
-  volume: BigInt!
-  volumeUSD: BigDecimal!
-
-  # 用户统计
+  entriesCount: BigInt!
   activeUsers: BigInt!
   newUsers: BigInt!
-}
-
-# 跨合约分析
-type ContractInteraction @entity(immutable: false) {
-  id: ID! # user-contract1-contract2
-  user: User!
-  contract1: Token!
-  contract2: Token!
-  interactionCount: BigInt!
-  totalVolume: BigInt!
 }
