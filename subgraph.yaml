@@ -9,7 +9,7 @@ dataSources:
     network: sepolia
     source:
       address: '0xcD6a42782d230D7c13A74ddec5dD140e55499Df9'
-      startBlock: 6000000
+      startBlock: 9129000
       abi: DataStorage
     mapping:
       kind: ethereum/events
