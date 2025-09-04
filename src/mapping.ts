@@ -1,119 +1,78 @@
-import { Transfer as TransferEvent } from "../generated/USDTContract/ERC20"
-import { Transfer, Token, User, DailyStats } from "../generated/schema"
-import { BigInt, Address } from "@graphprotocol/graph-ts"
-import { ERC20 } from '../generated/USDTContract/ERC20'
+import { DataStored, ContractDeployed } from "../generated/DataStorage/DataStorage"
+import { DataEntry, User, DataStorageContract, DailyStats } from "../generated/schema"
+import { BigInt, Bytes } from "@graphprotocol/graph-ts"
 
-// 处理转账事件
-export function handleTransfer(event: TransferEvent): void {
-  // 获取或创建代币实体
-  let token = getOrCreateToken(event.address)
+export function handleDataStored(event: DataStored): void {
+  // 创建数据条目实体
+  let id = event.transaction.hash.concatI32(event.logIndex.toI32())
+  let dataEntry = new DataEntry(id)
   
-  // 创建转账记录
-  let transfer = new Transfer(
-    event.transaction.hash.toHex() + '-' + event.logIndex.toString()
-  )
+  dataEntry.user = event.params.user
+  dataEntry.data = event.params.data
+  dataEntry.dataType = event.params.dataType
+  dataEntry.timestamp = event.params.timestamp
+  dataEntry.blockNumber = event.params.blockNumber
+  dataEntry.dataHash = event.params.dataHash
+  dataEntry.entryId = event.params.entryId
+  dataEntry.transactionHash = event.transaction.hash
   
-  transfer.token = token.id
-  transfer.from = getOrCreateUser(event.params.from).id
-  transfer.to = getOrCreateUser(event.params.to).id
-  transfer.value = event.params.value
-  transfer.blockNumber = event.block.number
-  transfer.blockHash = event.block.hash
-  transfer.timestamp = event.block.timestamp
-  transfer.transactionHash = event.transaction.hash
+  dataEntry.save()
   
-  // 判断是否为大额转账 (>$10,000 等值)
-  transfer.isLargeTransfer = event.params.value.gt(BigInt.fromI32(10000).times(BigInt.fromI32(10).pow(18)))
-  
-  // 更新统计
-  updateDailyStats(event.block.timestamp, token, event.params.value)
-  updateUserStats(event.params.from, event.params.to, event.params.value, event.block.timestamp)
-  
-  transfer.save()
-}
-
-// 获取或创建代币
-function getOrCreateToken(address: Address): Token {
-  let token = Token.load(address.toHex())
-  
-  if (!token) {
-    token = new Token(address.toHex())
-    
-    // 尝试调用合约获取基础信息
-    let contract = ERC20.bind(address)
-    let nameCall = contract.try_name()
-    token.name = nameCall.reverted ? "Unknown" : nameCall.value
-
-    let symbolCall = contract.try_symbol()
-    token.symbol = symbolCall.reverted ? "UNK" : symbolCall.value
-
-    let decimalsCall = contract.try_decimals()
-    token.decimals = decimalsCall.reverted ? 18 : decimalsCall.value
-    token.transferCount = BigInt.fromI32(0)
-    token.totalVolume = BigInt.fromI32(0)
-    token.holderCount = BigInt.fromI32(0)
-    
-    token.save()
-  }
-  
-  return token
-}
-
-// 获取或创建用户
-function getOrCreateUser(address: Address): User {
-  let user = User.load(address.toHex())
-  
+  // 更新用户统计
+  let user = User.load(event.params.user.toHexString())
   if (!user) {
-    user = new User(address.toHex())
-    user.tokens = []
-    user.totalSent = BigInt.fromI32(0)
-    user.totalReceived = BigInt.fromI32(0)
-    user.transactionCount = BigInt.fromI32(0)
-    user.isWhale = false
-    user.isContract = false  // 可以通过代码大小判断
-    
-    user.save()
+    user = new User(event.params.user.toHexString())
+    user.totalEntries = BigInt.fromI32(0)
+    user.firstEntryTime = event.params.timestamp
   }
   
-  return user
-}
-
-// 更新每日统计
-function updateDailyStats(timestamp: BigInt, token: Token, volume: BigInt): void {
-  let date = new Date(timestamp.toI64() * 1000)
-  let dayId = date.toISOString().split('T')[0] + '-' + token.id
+  user.totalEntries = user.totalEntries.plus(BigInt.fromI32(1))
+  user.lastEntryTime = event.params.timestamp
+  user.save()
   
-  let stats = DailyStats.load(dayId)
-  if (!stats) {
-    stats = new DailyStats(dayId)
-    stats.date = date.toISOString().split('T')[0]
-    stats.token = token.id
-    stats.transferCount = BigInt.fromI32(0)
-    stats.volume = BigInt.fromI32(0)
-    stats.activeUsers = BigInt.fromI32(0)
-    stats.newUsers = BigInt.fromI32(0)
+  // 更新合约统计
+  let contractStats = DataStorageContract.load(event.address.toHexString())
+  if (!contractStats) {
+    contractStats = new DataStorageContract(event.address.toHexString())
+    contractStats.totalEntries = BigInt.fromI32(0)
+    contractStats.totalUsers = BigInt.fromI32(0)
+    contractStats.deploymentBlock = event.block.number
+    contractStats.deploymentTime = event.block.timestamp
   }
   
-  stats.transferCount = stats.transferCount.plus(BigInt.fromI32(1))
-  stats.volume = stats.volume.plus(volume)
-  stats.save()
+  contractStats.totalEntries = contractStats.totalEntries.plus(BigInt.fromI32(1))
+  
+  // 检查是否是新用户
+  if (user.totalEntries.equals(BigInt.fromI32(1))) {
+    contractStats.totalUsers = contractStats.totalUsers.plus(BigInt.fromI32(1))
+  }
+  
+  contractStats.save()
+  
+  // 更新每日统计
+  let dayId = (event.block.timestamp.toI32() / 86400).toString() // 天数
+  let dailyStats = DailyStats.load(dayId)
+  
+  if (!dailyStats) {
+    dailyStats = new DailyStats(dayId)
+    dailyStats.date = dayId
+    dailyStats.entriesCount = BigInt.fromI32(0)
+    dailyStats.activeUsers = BigInt.fromI32(0)
+    dailyStats.newUsers = BigInt.fromI32(0)
+  }
+  
+  dailyStats.entriesCount = dailyStats.entriesCount.plus(BigInt.fromI32(1))
+  dailyStats.save()
 }
 
-// 更新用户统计
-function updateUserStats(from: Address, to: Address, value: BigInt, timestamp: BigInt): void {
-  let fromUser = getOrCreateUser(from)
-  let toUser = getOrCreateUser(to)
+export function handleContractDeployed(event: ContractDeployed): void {
+  let contractStats = new DataStorageContract(event.address.toHexString())
   
-  // 更新发送方
-  fromUser.totalSent = fromUser.totalSent.plus(value)
-  fromUser.transactionCount = fromUser.transactionCount.plus(BigInt.fromI32(1))
-  fromUser.lastTransactionTime = timestamp
+  contractStats.totalEntries = BigInt.fromI32(0)
+  contractStats.totalUsers = BigInt.fromI32(0)
+  contractStats.deploymentBlock = event.params.blockNumber
+  contractStats.deploymentTime = event.params.timestamp
+  contractStats.deployer = event.params.deployer
   
-  // 更新接收方
-  toUser.totalReceived = toUser.totalReceived.plus(value)
-  toUser.transactionCount = toUser.transactionCount.plus(BigInt.fromI32(1))
-  toUser.lastTransactionTime = timestamp
-  
-  fromUser.save()
-  toUser.save()
+  contractStats.save()
 }
