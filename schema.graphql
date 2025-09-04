@@ -1,6 +1,7 @@
 type DataEntry @entity(immutable: true) {
   id: ID! # txHash-logIndex
-  user: Bytes!
+  user: User! # 改为引用 User 实体而不是 Bytes
+  userAddress: Bytes! # 保留原始地址数据
   data: String!
   dataType: String!
   timestamp: BigInt!
