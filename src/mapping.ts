@@ -52,7 +52,7 @@ export function handleContractDeployed(event: ContractDeployed): void {
   contractStats.save()
 }
 
-// 新增：处理函数调用（备用方案）
+// 修复：处理函数调用（主要方案，因为合约不发出事件）
 export function handleStoreDataCall(call: StoreDataCall): void {
   if (call.reverted) {
     return // 跳过失败的调用
@@ -71,8 +71,8 @@ export function handleStoreDataCall(call: StoreDataCall): void {
   user.lastEntryTime = call.block.timestamp
   user.save()
   
-  // 创建数据条目实体
-  let dataEntryId = call.transaction.hash.concatI32(call.logIndex.toI32()).toHexString()
+  // 创建数据条目实体 - 修复logIndex问题
+  let dataEntryId = call.transaction.hash.toHexString()
   let dataEntry = new DataEntry(dataEntryId)
   
   dataEntry.user = userId
