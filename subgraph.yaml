@@ -1,5 +1,5 @@
 specVersion: 0.0.5
-description: USDT Data Tracker - Blockchain Data System  
+description: USDT Data Tracker - Blockchain Data System
 repository: https://github.com/limuran/usdt-data-tracker
 schema:
   file: ./schema.graphql
@@ -8,8 +8,8 @@ dataSources:
     name: DataStorage
     network: sepolia
     source:
-      address: '0xaE036c65C649172b43ef7156b009c6221B596B8b'
-      startBlock: 9130500
+      address: '0xcfb9534B39a81271464dF275b2ADBD697cB3b293'
+      startBlock: 9132800
       abi: DataStorage
     mapping:
       kind: ethereum/events
