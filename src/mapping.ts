@@ -1,6 +1,6 @@
-import { DataStored, ContractDeployed, StoreDataCall } from "../generated/DataStorage/DataStorage"
+import { DataStored, ContractDeployed } from "../generated/DataStorage/DataStorage"
 import { DataEntry, User, DataStorageContract, DailyStats } from "../generated/schema"
-import { BigInt, Bytes, crypto } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes } from "@graphprotocol/graph-ts"
 
 export function handleDataStored(event: DataStored): void {
   // 创建或加载用户实体
@@ -16,12 +16,12 @@ export function handleDataStored(event: DataStored): void {
   user.lastEntryTime = event.params.timestamp
   user.save()
   
-  // 创建数据条目实体 - 修复 ID 类型
+  // 创建数据条目实体
   let dataEntryId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
   let dataEntry = new DataEntry(dataEntryId)
   
-  dataEntry.user = userId // 引用 User 实体 ID
-  dataEntry.userAddress = event.params.user // 保留原始地址
+  dataEntry.user = userId
+  dataEntry.userAddress = event.params.user
   dataEntry.data = event.params.data
   dataEntry.dataType = event.params.dataType
   dataEntry.timestamp = event.params.timestamp
@@ -37,59 +37,15 @@ export function handleDataStored(event: DataStored): void {
 }
 
 export function handleContractDeployed(event: ContractDeployed): void {
-  let contractStats = DataStorageContract.load(event.address.toHexString())
+  let contractStats = new DataStorageContract(event.address.toHexString())
   
-  if (!contractStats) {
-    contractStats = new DataStorageContract(event.address.toHexString())
-    contractStats.totalEntries = BigInt.fromI32(0)
-    contractStats.totalUsers = BigInt.fromI32(0)
-  }
-  
+  contractStats.totalEntries = BigInt.fromI32(0)
+  contractStats.totalUsers = BigInt.fromI32(0)
   contractStats.deploymentBlock = event.params.blockNumber
   contractStats.deploymentTime = event.params.timestamp
   contractStats.deployer = event.params.deployer
   
   contractStats.save()
-}
-
-// 修复：处理函数调用（主要方案，因为合约不发出事件）
-export function handleStoreDataCall(call: StoreDataCall): void {
-  if (call.reverted) {
-    return // 跳过失败的调用
-  }
-
-  // 创建或加载用户实体
-  let userId = call.from.toHexString()
-  let user = User.load(userId)
-  if (!user) {
-    user = new User(userId)
-    user.totalEntries = BigInt.fromI32(0)
-    user.firstEntryTime = call.block.timestamp
-  }
-  
-  user.totalEntries = user.totalEntries.plus(BigInt.fromI32(1))
-  user.lastEntryTime = call.block.timestamp
-  user.save()
-  
-  // 创建数据条目实体 - 修复logIndex问题
-  let dataEntryId = call.transaction.hash.toHexString()
-  let dataEntry = new DataEntry(dataEntryId)
-  
-  dataEntry.user = userId
-  dataEntry.userAddress = call.from
-  dataEntry.data = call.inputs.data
-  dataEntry.dataType = call.inputs.dataType
-  dataEntry.timestamp = call.block.timestamp
-  dataEntry.blockNumber = call.block.number
-  // 生成数据哈希
-  dataEntry.dataHash = crypto.keccak256(Bytes.fromUTF8(call.inputs.data))
-  dataEntry.entryId = user.totalEntries
-  dataEntry.transactionHash = call.transaction.hash
-  
-  dataEntry.save()
-  
-  updateContractStats(call.to, userId, user.totalEntries)
-  updateDailyStats(call.block.timestamp, user.totalEntries)
 }
 
 // 辅助函数：更新合约统计
