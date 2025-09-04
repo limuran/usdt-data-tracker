@@ -2,33 +2,27 @@ specVersion: 0.0.5
 schema:
   file: ./schema.graphql
 dataSources:
-  # 合约1: USDT测试合约
   - kind: ethereum
-    name: USDTContract
+    name: DataStorage
     network: sepolia
     source:
       address: '0xcD6a42782d230D7c13A74ddec5dD140e55499Df9'
       startBlock: 13
-      abi: ERC20
+      abi: DataStorage
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - Transfer
-        - Token
+        - DataStored
+        - DataEntry
         - User
       abis:
-        - name: ERC20
-          file: ./abis/ERC20.json
+        - name: DataStorage
+          file: ./abis/DataStorage.json
       eventHandlers:
-        - event: Transfer(indexed address,indexed address,uint256)
-          handler: handleTransfer
+        - event: DataStored(indexed address,string,uint256,indexed string,indexed uint256,uint256,bytes32)
+          handler: handleDataStored
+        - event: ContractDeployed(indexed address,uint256,uint256)
+          handler: handleContractDeployed
       file: ./src/mapping.ts
-
-  # 可以添加更多合约...
-  # - kind: ethereum
-  #   name: AnotherContract
-  #   network: sepolia
-  #   source:
-  #     address: "0x另一个合约地址"
