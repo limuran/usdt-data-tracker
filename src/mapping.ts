@@ -16,14 +16,14 @@ export function handleDataStored(event: DataStored): void {
   user.lastEntryTime = event.params.timestamp
   user.save()
   
-  // 创建数据条目实体
-  let dataEntryId = event.transaction.hash.concatI32(event.logIndex.toI32())
+  // 创建数据条目实体 - 修复 ID 类型
+  let dataEntryId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
   let dataEntry = new DataEntry(dataEntryId)
   
   dataEntry.user = userId // 引用 User 实体 ID
   dataEntry.userAddress = event.params.user // 保留原始地址
   dataEntry.data = event.params.data
-  dataEntry.dataType = event.params.dataType
+  dataEntry.dataType = event.params.dataType // 这里应该是 string 类型，确保 ABI 正确
   dataEntry.timestamp = event.params.timestamp
   dataEntry.blockNumber = event.params.blockNumber
   dataEntry.dataHash = event.params.dataHash
