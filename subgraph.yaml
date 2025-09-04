@@ -24,7 +24,7 @@ dataSources:
         - name: DataStorage
           file: ./abis/DataStorage.json
       eventHandlers:
-        - event: DataStored(indexed address,string,uint256,indexed string,indexed uint256,uint256,bytes32)
+        - event: DataStored(indexed address,string,uint256,string,indexed uint256,uint256,bytes32)
           handler: handleDataStored
         - event: ContractDeployed(indexed address,uint256,uint256)
           handler: handleContractDeployed
