@@ -3,11 +3,25 @@ import { DataEntry, User, DataStorageContract, DailyStats } from "../generated/s
 import { BigInt, Bytes } from "@graphprotocol/graph-ts"
 
 export function handleDataStored(event: DataStored): void {
-  // 创建数据条目实体
-  let id = event.transaction.hash.concatI32(event.logIndex.toI32())
-  let dataEntry = new DataEntry(id)
+  // 创建或加载用户实体
+  let userId = event.params.user.toHexString()
+  let user = User.load(userId)
+  if (!user) {
+    user = new User(userId)
+    user.totalEntries = BigInt.fromI32(0)
+    user.firstEntryTime = event.params.timestamp
+  }
   
-  dataEntry.user = event.params.user
+  user.totalEntries = user.totalEntries.plus(BigInt.fromI32(1))
+  user.lastEntryTime = event.params.timestamp
+  user.save()
+  
+  // 创建数据条目实体
+  let dataEntryId = event.transaction.hash.concatI32(event.logIndex.toI32())
+  let dataEntry = new DataEntry(dataEntryId)
+  
+  dataEntry.user = userId // 引用 User 实体 ID
+  dataEntry.userAddress = event.params.user // 保留原始地址
   dataEntry.data = event.params.data
   dataEntry.dataType = event.params.dataType
   dataEntry.timestamp = event.params.timestamp
@@ -17,18 +31,6 @@ export function handleDataStored(event: DataStored): void {
   dataEntry.transactionHash = event.transaction.hash
   
   dataEntry.save()
-  
-  // 更新用户统计
-  let user = User.load(event.params.user.toHexString())
-  if (!user) {
-    user = new User(event.params.user.toHexString())
-    user.totalEntries = BigInt.fromI32(0)
-    user.firstEntryTime = event.params.timestamp
-  }
-  
-  user.totalEntries = user.totalEntries.plus(BigInt.fromI32(1))
-  user.lastEntryTime = event.params.timestamp
-  user.save()
   
   // 更新合约统计
   let contractStats = DataStorageContract.load(event.address.toHexString())
